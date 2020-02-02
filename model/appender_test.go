@@ -920,7 +920,8 @@ func validateFile(t *testing.T, fileName string) {
 
 	handler, _ := sighandler.NewAdobeX509RSASHA1(nil, nil)
 	handler2, _ := sighandler.NewAdobePKCS7Detached(nil, nil)
-	handlers := []model.SignatureHandler{handler, handler2}
+	handler3, _ := sighandler.NewEtsiPAdESDetached(nil, nil)
+	handlers := []model.SignatureHandler{handler, handler2, handler3}
 
 	res, err := reader.ValidateSignatures(handlers)
 	if err != nil {
@@ -970,6 +971,73 @@ func parseByteRange(byteRange *core.PdfObjectArray) ([]int64, error) {
 	}
 
 	return []int64{s1, s1 + l1, s2, s2 + l2}, nil
+}
+
+func TestAppenderSignPAdESPage4(t *testing.T) {
+	// TODO move to reader_test.go
+	validateFile(t, testPdfSignedPDFDocument)
+
+	f1, err := os.Open(testPdfFile1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	defer f1.Close()
+	pdf1, err := model.NewPdfReader(f1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	appender, err := model.NewPdfAppender(pdf1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	f, _ := ioutil.ReadFile(testPKS12Key)
+	privateKey, cert, err := pkcs12.Decode(f, testPKS12KeyPassword)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	handler, err := sighandler.NewAdobePKCS7Detached(privateKey.(*rsa.PrivateKey), cert)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	// Create signature field and appearance.
+	signature := model.NewPdfSignature(handler)
+	signature.SetName("Test Appender")
+	signature.SetReason("TestAppenderSignPage4")
+	signature.SetDate(time.Now(), "")
+
+	if err := signature.Initialize(); err != nil {
+		return
+	}
+
+	sigField := model.NewPdfFieldSignature(signature)
+	sigField.T = core.MakeString("Signature1")
+	sigField.Rect = core.MakeArray(
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+	)
+
+	if err = appender.Sign(1, sigField); err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	err = appender.WriteToFile(tempFile("appender_sign_pades_page_4.pdf"))
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	validateFile(t, tempFile("appender_sign_pades_page_4.pdf"))
 }
 
 func TestAppenderSignPage4(t *testing.T) {
