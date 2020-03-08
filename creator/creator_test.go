@@ -57,6 +57,8 @@ const testImageFile1 = "./testdata/logo.png"
 const testImageFile2 = "./testdata/signature.png"
 const testRobotoRegularTTFFile = "./testdata/roboto/Roboto-Regular.ttf"
 const testRobotoBoldTTFFile = "./testdata/roboto/Roboto-Bold.ttf"
+const testRobotoItalicTTFFile = "./testdata/roboto/Roboto-Italic.ttf"
+const testRobotoBoldItalicTTFFile = "./testdata/roboto/Roboto-BoldItalic.ttf"
 const testWts11TTFFile = "./testdata/wts11.ttf"
 const testImageFileCCITT = "./testdata/p3_0.png"
 
@@ -2977,6 +2979,74 @@ func TestCreatorStable(t *testing.T) {
 	h2 := writePDF()
 	if h1 != h2 {
 		t.Fatal("output is not stable")
+	}
+}
+
+func TestHtmlParagraph(t *testing.T) {
+	c := New()
+
+	html := `
+<b>Bold <i>BoldItalic</i></b> <i>Italic</i> <br/>
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip <i>ex ea commodo consequat</i>.
+<b>Done!</b>
+<p>Paragraph #1</p><p style="color:blue;text-align:center">Paragraph #2</p>
+<table style="width:100%">
+  <tr>
+    <th align="center">Firstname</th>
+    <th align="center">Lastname</th>
+    <th align="center">Age</th>
+  </tr>
+  <tr>
+    <td>Jill</td>
+    <td>Smith</td>
+    <td>50</td>
+  </tr>
+  <tr>
+    <td>Eve</td>
+    <td>Jackson</td>
+    <td><b><i>94</i></b></td>
+  </tr>
+</table>
+`
+	hp := c.NewHtmlParagraph()
+
+	roboto, err := model.NewPdfFontFromTTFFile(testRobotoRegularTTFFile)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	robotoBold, err := model.NewPdfFontFromTTFFile(testRobotoBoldTTFFile)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	robotoItalic, err := model.NewPdfFontFromTTFFile(testRobotoItalicTTFFile)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	robotoBoldItalic, err := model.NewPdfFontFromTTFFile(testRobotoBoldItalicTTFFile)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	hp.RegularStyle.Font = roboto
+	hp.BoldFont = robotoBold
+	hp.ItalicFont = robotoItalic
+	hp.BoldItalicFont = robotoBoldItalic
+
+	if err := hp.Append(html); err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	c.Draw(hp)
+
+	outFile := tempFile("html.pdf")
+	if err := c.WriteToFile(outFile); err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
 	}
 }
 
