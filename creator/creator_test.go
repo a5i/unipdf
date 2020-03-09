@@ -3020,12 +3020,15 @@ Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliqu
   <tr>
     <td>Jan</td>
     <td>Bill</td>
-    <td>
-<table><tr><td>1</td></tr><tr><td>2</td></tr></table>
+    <td style="color:red;text-align:center">
+44
+
+<table style="color:green;text-align:center"><tr><td>1</td></tr><tr><td>2</td></tr></table>
 	</td>
   </tr>
 </table>
 `
+	// <table><tr><td>1</td></tr><tr><td>2</td></tr></table>
 	hp := c.NewHtmlParagraph()
 
 	roboto, err := model.NewPdfFontFromTTFFile(testRobotoRegularTTFFile)
@@ -3048,10 +3051,10 @@ Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliqu
 		t.Errorf("Fail: %v\n", err)
 		return
 	}
-	hp.RegularStyle.Font = roboto
-	hp.BoldFont = robotoBold
-	hp.ItalicFont = robotoItalic
-	hp.BoldItalicFont = robotoBoldItalic
+	hp.SetRegularFont(roboto)
+	hp.SetBoldFont(robotoBold)
+	hp.SetItalicFont(robotoItalic)
+	hp.SetBoldItalicFont(robotoBoldItalic)
 
 	if err := hp.Append(html); err != nil {
 		t.Errorf("Fail: %v\n", err)

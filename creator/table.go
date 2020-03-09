@@ -948,6 +948,8 @@ func (cell *TableCell) SetContent(vd VectorDrawable) error {
 		cell.content = vd
 	case *Division:
 		cell.content = vd
+	case *htmlBlock:
+		cell.content = vd
 	default:
 		common.Log.Debug("ERROR: unsupported cell content type %T", vd)
 		return core.ErrTypeError
