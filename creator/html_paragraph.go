@@ -2,6 +2,7 @@ package creator
 
 import (
 	"bytes"
+	"log"
 	"strings"
 
 	"github.com/unidoc/unipdf/v3/model"
@@ -216,6 +217,11 @@ func (h *HtmlParagraph) processNode(node *html.Node) error {
 		return nil
 	case html.ElementNode:
 		switch node.Data {
+		case "style":
+			log.Println(node)
+			return nil
+		case "script":
+			return nil
 		case "table":
 			t := h.createAndPushTable()
 			h.elements = append(h.elements, t)

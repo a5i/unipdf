@@ -2986,6 +2986,16 @@ func TestHtmlParagraph(t *testing.T) {
 	c := New()
 
 	html := `
+<style>
+table {
+  width: 100%;
+}
+
+th {
+  height: 50px;
+}
+</style>
+
 <b>Bold <i>BoldItalic</i></b> <i>Italic</i> <br/>
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip <i>ex ea commodo consequat</i>.
@@ -3006,6 +3016,13 @@ Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliqu
     <td>Eve</td>
     <td>Jackson</td>
     <td><b><i>94</i></b></td>
+  </tr>
+  <tr>
+    <td>Jan</td>
+    <td>Bill</td>
+    <td>
+<table><tr><td>1</td></tr><tr><td>2</td></tr></table>
+	</td>
   </tr>
 </table>
 `
