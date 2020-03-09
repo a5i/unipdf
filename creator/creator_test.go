@@ -3015,12 +3015,12 @@ Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliqu
   <tr>
     <td>Eve</td>
     <td>Jackson</td>
-    <td><b><i>94</i></b></td>
+    <td style="color:white;text-align:center;background-color:#ee3344;"><b><i>94</i></b></td>
   </tr>
   <tr>
     <td>Jan</td>
     <td>Bill</td>
-    <td style="color:red;text-align:center">
+    <td style="color:red;text-align:center;background-color:#eeeeee;">
 44
 
 <table style="color:green;text-align:center"><tr><td>1</td></tr><tr><td>2</td></tr></table>

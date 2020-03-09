@@ -346,6 +346,14 @@ func (table *Table) GeneratePageBlocks(ctx DrawContext) ([]*Block, DrawContext, 
 				// Add diff to last row.
 				table.rowHeights[cell.row+cell.rowspan-2] += diffh
 			}
+		case *htmlBlock:
+			t.SetWidth(w - cell.indent)
+			newh := t.Height()
+			if newh > h {
+				diffh := newh - h
+				// Add diff to last row.
+				table.rowHeights[cell.row+cell.rowspan-2] += diffh
+			}
 		case *Image:
 			img := t
 			newh := img.Height() + img.margins.top + img.margins.bottom
