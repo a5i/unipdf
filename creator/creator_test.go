@@ -3029,7 +3029,7 @@ Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliqu
 </table>
 `
 	// <table><tr><td>1</td></tr><tr><td>2</td></tr></table>
-	hp := c.NewHtmlParagraph()
+	hp := c.NewHTMLParagraph()
 
 	roboto, err := model.NewPdfFontFromTTFFile(testRobotoRegularTTFFile)
 	if err != nil {

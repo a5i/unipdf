@@ -71,10 +71,10 @@ func (style *htmlBlockStyle) addEmbeddedCSS(tag string, csstext string) {
 				style.TextAlignment = TextAlignmentJustify
 			}
 		case "color":
-			style.Color = getRGBColorFromHtml(s.Value)
+			style.Color = getRGBColorFromHTML(s.Value)
 		case "background-color":
 			es := style.getOrCreateElementStyle()
-			c := getRGBColorFromHtml(s.Value)
+			c := getRGBColorFromHTML(s.Value)
 			es.backgroundColor = model.NewPdfColorDeviceRGB(c.ToRGB())
 		}
 	}
@@ -215,7 +215,7 @@ func (st *htmlTableStack) popTable() *htmlTable {
 }
 
 type htmlBlock struct {
-	owner      *HtmlParagraph
+	owner      *HTMLParagraph
 	parent     *htmlBlock
 	tableStack *htmlTableStack
 	styleStack *htmlStyleStack
@@ -225,7 +225,7 @@ type htmlBlock struct {
 	style            htmlBlockStyle
 }
 
-func newHtmlBlock(parent *htmlBlock, style htmlBlockStyle) *htmlBlock {
+func newHTMLBlock(parent *htmlBlock, style htmlBlockStyle) *htmlBlock {
 	b := htmlBlock{
 		owner:            parent.owner,
 		parent:           parent,
@@ -295,7 +295,7 @@ func (b *htmlBlock) processNode(node *html.Node) error {
 			}
 		case "td", "th":
 			if t := b.tableStack.currentTable(); t != nil && len(t.rows) > 0 {
-				newB = newHtmlBlock(b, b.styleStack.currentStyle())
+				newB = newHTMLBlock(b, b.styleStack.currentStyle())
 				style := newB.parseNodeStyle(node)
 				newB.style = style
 				newB.styleStack.pushStyle(style)
@@ -342,7 +342,8 @@ func (b *htmlBlock) processNode(node *html.Node) error {
 	return nil
 }
 
-type HtmlParagraph struct {
+// HTMLParagraph  allow to use simple HTML markup to generate content.
+type HTMLParagraph struct {
 	blocks     []*htmlBlock
 	tableStack htmlTableStack
 	styleStack htmlStyleStack
@@ -480,45 +481,50 @@ func (b *htmlBlock) GeneratePageBlocks(ctx DrawContext) ([]*Block, DrawContext, 
 	return blocks, origCtx, nil
 }
 
-// NewHtmlParagraph creates a new html paragraph.
+// NewHTMLParagraph creates a new html paragraph.
 // Default attributes:
 // Font: Helvetica,
 // Font size: 10
 // Encoding: WinAnsiEncoding
 // Wrap: enabled
 // Text color: black
-func (c *Creator) NewHtmlParagraph() *HtmlParagraph {
-	return newHtmlParagraph(c.NewTextStyle())
+func (c *Creator) NewHTMLParagraph() *HTMLParagraph {
+	return newHTMLParagraph(c.NewTextStyle())
 }
 
-func newHtmlParagraph(baseStyle TextStyle) *HtmlParagraph {
-	hp := HtmlParagraph{}
+func newHTMLParagraph(baseStyle TextStyle) *HTMLParagraph {
+	hp := HTMLParagraph{}
 	hp.styleStack.RegularStyle = baseStyle
 	return &hp
 }
 
-func (h *HtmlParagraph) SetRegularStyle(style TextStyle) {
+// SetRegularStyle sets the default text style.
+func (h *HTMLParagraph) SetRegularStyle(style TextStyle) {
 	h.styleStack.RegularStyle = style
 }
 
-func (h *HtmlParagraph) SetRegularFont(font *model.PdfFont) {
+// SetRegularFont sets the font for the default text style.
+func (h *HTMLParagraph) SetRegularFont(font *model.PdfFont) {
 	h.styleStack.RegularStyle.Font = font
 }
 
-func (h *HtmlParagraph) SetBoldFont(font *model.PdfFont) {
+// SetBoldFont sets the font for the bold text style.
+func (h *HTMLParagraph) SetBoldFont(font *model.PdfFont) {
 	h.styleStack.BoldFont = font
 }
 
-func (h *HtmlParagraph) SetItalicFont(font *model.PdfFont) {
+// SetItalicFont sets the font for the italic text style.
+func (h *HTMLParagraph) SetItalicFont(font *model.PdfFont) {
 	h.styleStack.ItalicFont = font
 }
 
-func (h *HtmlParagraph) SetBoldItalicFont(font *model.PdfFont) {
+// SetBoldItalicFont sets the font for the bold and italic together text style.
+func (h *HTMLParagraph) SetBoldItalicFont(font *model.PdfFont) {
 	h.styleStack.BoldItalicFont = font
 }
 
 // Append adds html to paragraph.
-func (h *HtmlParagraph) Append(htmlCode string) error {
+func (h *HTMLParagraph) Append(htmlCode string) error {
 	doc, err := html.Parse(bytes.NewBufferString(htmlCode))
 	if err != nil {
 		return err
@@ -533,7 +539,7 @@ func (h *HtmlParagraph) Append(htmlCode string) error {
 	return newB.processNode(doc)
 }
 
-var stdHtmlColors = map[string]Color{
+var stdHTMLColors = map[string]Color{
 	"blue":   ColorBlue,
 	"black":  ColorBlack,
 	"green":  ColorGreen,
@@ -542,8 +548,8 @@ var stdHtmlColors = map[string]Color{
 	"yellow": ColorYellow,
 }
 
-func getRGBColorFromHtml(color string) Color {
-	if c, ok := stdHtmlColors[color]; ok {
+func getRGBColorFromHTML(color string) Color {
+	if c, ok := stdHTMLColors[color]; ok {
 		return c
 	}
 	return ColorRGBFromHex(color)
@@ -551,7 +557,7 @@ func getRGBColorFromHtml(color string) Color {
 
 // GeneratePageBlocks generates the page blocks.  Multiple blocks are generated if the contents wrap
 // over multiple pages. Implements the Drawable interface.
-func (h *HtmlParagraph) GeneratePageBlocks(ctx DrawContext) ([]*Block, DrawContext, error) {
+func (h *HTMLParagraph) GeneratePageBlocks(ctx DrawContext) ([]*Block, DrawContext, error) {
 	var blocks []*Block
 	origCtx := ctx
 	for _, e := range h.blocks {
