@@ -26,6 +26,157 @@ import (
 	"golang.org/x/crypto/ocsp"
 )
 
+// PAdESLevelB contains parameters for PAdES B-Level signature creation.
+// ETSI TS 103 172 V2.2.2 (2013-04) page 10.
+type PAdESLevelB struct {
+	PrivateKey  *rsa.PrivateKey
+	Certificate *x509.Certificate
+	CaCert      *x509.Certificate
+}
+
+// New creates a new Adobe.PPKLite ETSI.CAdES.detached Level B signature handler.
+// All fields are required.
+func (p *PAdESLevelB) New() (padesSignatureHandler, error) {
+	if p.PrivateKey == nil {
+		return nil, fmt.Errorf("field PrivateKey is required")
+	}
+	if p.Certificate == nil {
+		return nil, fmt.Errorf("field Certificate is required")
+	}
+	if p.CaCert == nil {
+		return nil, fmt.Errorf("field CaCert is required")
+	}
+	return &etsiPAdES{
+		certificate: p.Certificate,
+		privateKey:  p.PrivateKey,
+		caCert:      p.CaCert,
+	}, nil
+}
+
+// PAdESLevelT contains parameters for PAdES T-Level signature creation.
+// ETSI TS 103 172 V2.2.2 (2013-04) page 11.
+type PAdESLevelT struct {
+	PrivateKey                    *rsa.PrivateKey
+	Certificate                   *x509.Certificate
+	CaCert                        *x509.Certificate
+	CertificateTimestampServerURL string
+}
+
+// New creates a new Adobe.PPKLite ETSI.CAdES.detached Level T signature handler.
+// All fields are required.
+func (p *PAdESLevelT) New() (padesSignatureHandler, error) {
+	if p.PrivateKey == nil {
+		return nil, fmt.Errorf("field PrivateKey is required")
+	}
+	if p.Certificate == nil {
+		return nil, fmt.Errorf("field Certificate is required")
+	}
+	if p.CaCert == nil {
+		return nil, fmt.Errorf("field CaCert is required")
+	}
+	if p.CertificateTimestampServerURL == "" {
+		return nil, fmt.Errorf("field CertificateTimestampServerURL is required")
+	}
+	return &etsiPAdES{
+		certificate:        p.Certificate,
+		privateKey:         p.PrivateKey,
+		caCert:             p.CaCert,
+		timestampServerURL: p.CertificateTimestampServerURL,
+	}, nil
+}
+
+// PAdESLevelLT contains parameters for PAdES LTV/LT-Level signature creation.
+// ETSI TS 103 172 V2.2.2 (2013-04) page 12.
+type PAdESLevelLT struct {
+	PrivateKey                    *rsa.PrivateKey
+	Certificate                   *x509.Certificate
+	CaCert                        *x509.Certificate
+	CertificateTimestampServerURL string
+	CLRDistributionPoints         []string
+	OCSPServers                   []string
+}
+
+// New creates a new Adobe.PPKLite ETSI.CAdES.detached Level LT (PAdES LTV) signature handler.
+// All fields are required.
+func (p *PAdESLevelLT) New() (padesSignatureHandler, error) {
+	if p.PrivateKey == nil {
+		return nil, fmt.Errorf("field PrivateKey is required")
+	}
+	if p.Certificate == nil {
+		return nil, fmt.Errorf("field Certificate is required")
+	}
+	if p.CaCert == nil {
+		return nil, fmt.Errorf("field CaCert is required")
+	}
+	if p.CertificateTimestampServerURL == "" {
+		return nil, fmt.Errorf("field CertificateTimestampServerURL is required")
+	}
+	if len(p.CLRDistributionPoints) == 0 {
+		return nil, fmt.Errorf("field CLRDistributionPoints is required")
+	}
+	if len(p.OCSPServers) == 0 {
+		return nil, fmt.Errorf("field OCSPServers is required")
+	}
+	return &etsiPAdES{
+		privateKey:            p.PrivateKey,
+		certificate:           p.Certificate,
+		caCert:                p.CaCert,
+		crlDistributionPoints: p.CLRDistributionPoints,
+		ocspServers:           p.OCSPServers,
+		timestampServerURL:    p.CertificateTimestampServerURL,
+	}, nil
+}
+
+// PAdESLevelLTA contains parameters for PAdES LTA-Level signature creation.
+// ETSI TS 103 172 V2.2.2 (2013-04) page 13.
+type PAdESLevelLTA struct {
+	PrivateKey                    *rsa.PrivateKey
+	Certificate                   *x509.Certificate
+	CaCert                        *x509.Certificate
+	CertificateTimestampServerURL string
+	CLRDistributionPoints         []string
+	OCSPServers                   []string
+	TimestampServerURL            string
+}
+
+// New creates a new Adobe.PPKLite ETSI.CAdES.detached Level LT (PAdES LTV) signature handler.
+// All fields are required.
+func (p *PAdESLevelLTA) New() (padesSignatureHandler, model.SignatureHandler, error) {
+	if p.PrivateKey == nil {
+		return nil, nil, fmt.Errorf("field PrivateKey is required")
+	}
+	if p.Certificate == nil {
+		return nil, nil, fmt.Errorf("field Certificate is required")
+	}
+	if p.CaCert == nil {
+		return nil, nil, fmt.Errorf("field CaCert is required")
+	}
+	if p.CertificateTimestampServerURL == "" {
+		return nil, nil, fmt.Errorf("field CertificateTimestampServerURL is required")
+	}
+	if len(p.CLRDistributionPoints) == 0 {
+		return nil, nil, fmt.Errorf("field CLRDistributionPoints is required")
+	}
+	if len(p.OCSPServers) == 0 {
+		return nil, nil, fmt.Errorf("field OCSPServers is required")
+	}
+	if p.TimestampServerURL == "" {
+		return nil, nil, fmt.Errorf("field TimestampServerURL is required")
+	}
+	handler, err := NewDocTimeStamp(p.TimestampServerURL, crypto.SHA512)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &etsiPAdES{
+		privateKey:            p.PrivateKey,
+		certificate:           p.Certificate,
+		caCert:                p.CaCert,
+		crlDistributionPoints: p.CLRDistributionPoints,
+		ocspServers:           p.OCSPServers,
+		timestampServerURL:    p.CertificateTimestampServerURL,
+	}, handler, nil
+}
+
 type etsiPAdES struct {
 	privateKey  *rsa.PrivateKey
 	certificate *x509.Certificate
@@ -49,20 +200,10 @@ type padesSignatureHandler interface {
 	SetTimestampServerURL(string)
 }
 
-// NewEmptyEtsiPAdESDetached creates a new Adobe.PPKMS/Adobe.PPKLite adbe.pkcs7.detached
-// signature handler.
-func NewEmptyEtsiPAdESDetached() (padesSignatureHandler, error) {
+// NewEmptyPAdES creates a new Adobe.PPKMS/Adobe.PPKLite adbe.pkcs7.detached signature handler.
+func NewEmptyPAdES() (padesSignatureHandler, error) {
 	return &etsiPAdES{
 		emptySignature: true,
-	}, nil
-}
-
-// NewAEtsiPAdESDetached creates a new Adobe.PPKMS/Adobe.PPKLite adbe.pkcs7.detached signature handler.
-// Both parameters may be nil for the signature validation.
-func NewEtsiPAdESDetached(privateKey *rsa.PrivateKey, certificate *x509.Certificate) (padesSignatureHandler, error) {
-	return &etsiPAdES{
-		certificate: certificate,
-		privateKey:  privateKey,
 	}, nil
 }
 
@@ -114,7 +255,10 @@ func (a *etsiPAdES) InitSignature(sig *model.PdfSignature) error {
 	if err != nil {
 		return err
 	}
-	digest.Write([]byte("calculate the Contents field size"))
+	_, err = digest.Write([]byte("calculate the Contents field size"))
+	if err != nil {
+		return err
+	}
 	handler.isInitializing = true
 	err = handler.Sign(sig, digest)
 	handler.isInitializing = false
@@ -280,10 +424,13 @@ func (a *etsiPAdES) Sign(sig *model.PdfSignature, digest model.Hasher) error {
 			return err
 		}
 
-		signedData.GetSignedData().SignerInfos[0].SetUnauthenticatedAttributes([]pkcs7.Attribute{{
+		err = signedData.GetSignedData().SignerInfos[0].SetUnauthenticatedAttributes([]pkcs7.Attribute{{
 			Type:  asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 16, 2, 14},
 			Value: tsInfo,
 		}})
+		if err != nil {
+			return err
+		}
 	}
 
 	// Finish() to obtain the signature bytes
@@ -327,7 +474,7 @@ func (a *etsiPAdES) Sign(sig *model.PdfSignature, digest model.Hasher) error {
 }
 
 // NewDigest creates a new digest.
-func (a *etsiPAdES) NewDigest(sig *model.PdfSignature) (model.Hasher, error) {
+func (a *etsiPAdES) NewDigest(_ *model.PdfSignature) (model.Hasher, error) {
 	return bytes.NewBuffer(nil), nil
 }
 

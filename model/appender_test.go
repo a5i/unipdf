@@ -925,7 +925,7 @@ func validateFile(t *testing.T, fileName string) {
 	handler, _ := sighandler.NewAdobeX509RSASHA1(nil, nil)
 	handler2, _ := sighandler.NewAdobePKCS7Detached(nil, nil)
 	handler3, _ := sighandler.NewDocTimeStamp("", 0)
-	handler4, _ := sighandler.NewEmptyEtsiPAdESDetached()
+	handler4, _ := sighandler.NewEmptyPAdES()
 	handlers := []model.SignatureHandler{handler, handler2, handler3, handler4}
 
 	res, err := reader.ValidateSignatures(handlers)
@@ -1850,7 +1850,7 @@ func TestValidatePAdESSignature(t *testing.T) {
 
 }
 
-func TestAppenderSignPAdES(t *testing.T) {
+func TestAppenderSignPAdESLevelB(t *testing.T) {
 
 	validateFile(t, testPdfSignedPDFDocument)
 
@@ -1899,17 +1899,213 @@ func TestAppenderSignPAdES(t *testing.T) {
 		return
 	}
 
-	handler, err := sighandler.NewEtsiPAdESDetached(privateKey.(*rsa.PrivateKey), cert)
+	params := sighandler.PAdESLevelB{
+		PrivateKey:  privateKey.(*rsa.PrivateKey),
+		Certificate: cert,
+		CaCert:      cacert,
+	}
+
+	handler, err := params.New()
 	if err != nil {
 		t.Errorf("Fail: %v\n", err)
 		return
 	}
-	// Add certificate verification servers for LTV signature.
-	handler.SetCACert(cacert)
-	handler.AddCRLDistributionPoints(cert.CRLDistributionPoints...)
-	handler.AddOCSPServers(cert.OCSPServer...)
+
+	// Create signature field and appearance.
+	signature := model.NewPdfSignature(handler)
+	signature.SetName("Test Appender")
+	signature.SetReason("TestAppenderSignPage4")
+	signature.SetDate(time.Now(), "")
+
+	if err := signature.Initialize(); err != nil {
+		return
+	}
+
+	sigField := model.NewPdfFieldSignature(signature)
+	sigField.T = core.MakeString("Signature1")
+	sigField.Rect = core.MakeArray(
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+	)
+
+	if err = appender.Sign(1, sigField); err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	outFile := tempFile("appender_sign_page_pades_lavel_b.pdf")
+	err = appender.WriteToFile(outFile)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	validateFile(t, outFile)
+}
+
+func TestAppenderSignPAdESLevelT(t *testing.T) {
+
+	validateFile(t, testPdfSignedPDFDocument)
+
+	f1, err := os.Open(testPdfFile1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	defer f1.Close()
+	pdf1, err := model.NewPdfReader(f1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	appender, err := model.NewPdfAppender(pdf1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	f, err := ioutil.ReadFile("./testdata/tinycert/cert.pfx")
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	privateKey, cert, err := pkcs12.Decode(f, testPKS12KeyPassword)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	caCertF, err := ioutil.ReadFile("./testdata/tinycert/cacert.pem")
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	certDERBlock, _ := pem.Decode(caCertF)
+
+	cacert, err := x509.ParseCertificate(certDERBlock.Bytes)
+
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
 	timestampServerURL := "https://freetsa.org/tsr"
-	handler.SetTimestampServerURL(timestampServerURL)
+
+	params := sighandler.PAdESLevelT{
+		PrivateKey:                    privateKey.(*rsa.PrivateKey),
+		Certificate:                   cert,
+		CaCert:                        cacert,
+		CertificateTimestampServerURL: timestampServerURL,
+	}
+
+	handler, err := params.New()
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	// Create signature field and appearance.
+	signature := model.NewPdfSignature(handler)
+	signature.SetName("Test Appender")
+	signature.SetReason("TestAppenderSignPage4")
+	signature.SetDate(time.Now(), "")
+
+	if err := signature.Initialize(); err != nil {
+		return
+	}
+
+	sigField := model.NewPdfFieldSignature(signature)
+	sigField.T = core.MakeString("Signature1")
+	sigField.Rect = core.MakeArray(
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+	)
+
+	if err = appender.Sign(1, sigField); err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	outFile := tempFile("appender_sign_page_pades_lavel_t.pdf")
+	err = appender.WriteToFile(outFile)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	validateFile(t, outFile)
+}
+
+func TestAppenderSignPAdESLevelLTV(t *testing.T) {
+
+	validateFile(t, testPdfSignedPDFDocument)
+
+	f1, err := os.Open(testPdfFile1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	defer f1.Close()
+	pdf1, err := model.NewPdfReader(f1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	appender, err := model.NewPdfAppender(pdf1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	f, err := ioutil.ReadFile("./testdata/tinycert/cert.pfx")
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	privateKey, cert, err := pkcs12.Decode(f, testPKS12KeyPassword)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	caCertF, err := ioutil.ReadFile("./testdata/tinycert/cacert.pem")
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	certDERBlock, _ := pem.Decode(caCertF)
+
+	cacert, err := x509.ParseCertificate(certDERBlock.Bytes)
+
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	timestampServerURL := "https://freetsa.org/tsr"
+
+	params := sighandler.PAdESLevelLT{
+		PrivateKey:                    privateKey.(*rsa.PrivateKey),
+		Certificate:                   cert,
+		CaCert:                        cacert,
+		CertificateTimestampServerURL: timestampServerURL,
+		CLRDistributionPoints:         cert.CRLDistributionPoints,
+		OCSPServers:                   cert.OCSPServer,
+	}
+
+	handler, err := params.New()
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
 
 	// Create signature field and appearance.
 	signature := model.NewPdfSignature(handler)
@@ -1956,8 +2152,171 @@ func TestAppenderSignPAdES(t *testing.T) {
 
 	appender2.SetDSS(handler.GetDSS())
 
-	outFile := tempFile("appender_sign_page_pades.pdf")
+	outFile := tempFile("appender_sign_page_pades_lavel_ltv.pdf")
 	err = appender2.WriteToFile(outFile)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	validateFile(t, outFile)
+}
+
+func TestAppenderSignPAdESLevelLTA(t *testing.T) {
+
+	validateFile(t, testPdfSignedPDFDocument)
+
+	f1, err := os.Open(testPdfFile1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	defer f1.Close()
+	pdf1, err := model.NewPdfReader(f1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	appender, err := model.NewPdfAppender(pdf1)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	f, err := ioutil.ReadFile("./testdata/tinycert/cert.pfx")
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	privateKey, cert, err := pkcs12.Decode(f, testPKS12KeyPassword)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	caCertF, err := ioutil.ReadFile("./testdata/tinycert/cacert.pem")
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	certDERBlock, _ := pem.Decode(caCertF)
+
+	cacert, err := x509.ParseCertificate(certDERBlock.Bytes)
+
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	timestampServerURL := "https://freetsa.org/tsr"
+
+	params := sighandler.PAdESLevelLTA{
+		PrivateKey:                    privateKey.(*rsa.PrivateKey),
+		Certificate:                   cert,
+		CaCert:                        cacert,
+		CertificateTimestampServerURL: timestampServerURL,
+		CLRDistributionPoints:         cert.CRLDistributionPoints,
+		OCSPServers:                   cert.OCSPServer,
+		TimestampServerURL:            timestampServerURL,
+	}
+
+	handler, tsHandler, err := params.New()
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	// Create signature field and appearance.
+	signature := model.NewPdfSignature(handler)
+	signature.SetName("Test Appender")
+	signature.SetReason("TestAppenderSignPage4")
+	signature.SetDate(time.Now(), "")
+
+	if err := signature.Initialize(); err != nil {
+		return
+	}
+
+	sigField := model.NewPdfFieldSignature(signature)
+	sigField.T = core.MakeString("Signature1")
+	sigField.Rect = core.MakeArray(
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+	)
+
+	if err = appender.Sign(1, sigField); err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	buffer := bytes.NewBuffer(nil)
+	err = appender.Write(buffer)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	pdf2, err := model.NewPdfReader(bytes.NewReader(buffer.Bytes()))
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	appender2, err := model.NewPdfAppender(pdf2)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	appender2.SetDSS(handler.GetDSS())
+
+	buffer = bytes.NewBuffer(nil)
+	err = appender2.Write(buffer)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	pdf3, err := model.NewPdfReader(bytes.NewReader(buffer.Bytes()))
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+	appender3, err := model.NewPdfAppender(pdf3)
+	if err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	// Create signature field and appearance.
+	tsSignature := model.NewPdfSignature(tsHandler)
+	tsSignature.SetName("Test Appender")
+	tsSignature.SetReason("TestAppenderSignPage4")
+	tsSignature.SetDate(time.Now(), "")
+
+	if err := tsSignature.Initialize(); err != nil {
+		return
+	}
+
+	tsSigField := model.NewPdfFieldSignature(tsSignature)
+	tsSigField.T = core.MakeString("SignatureTS1")
+	tsSigField.Rect = core.MakeArray(
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+		core.MakeInteger(0),
+	)
+
+	if err = appender3.Sign(1, tsSigField); err != nil {
+		t.Errorf("Fail: %v\n", err)
+		return
+	}
+
+	outFile := tempFile("appender_sign_page_pades_lavel_lta.pdf")
+	err = appender3.WriteToFile(outFile)
 	if err != nil {
 		t.Errorf("Fail: %v\n", err)
 		return
